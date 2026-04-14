@@ -1,0 +1,753 @@
+{
+  "info": {
+    "_postman_id": "construction-marketplace-job-requests",
+    "name": "Construction Marketplace - Job Requests API",
+    "description": "Complete API collection for testing Job Request endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register Customer",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"role\": \"customer\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"],
+              "query": []
+            },
+            "description": "Register a new customer account"
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.token) {",
+                  "        pm.collectionVariables.set('token', jsonData.data.token);",
+                  "        console.log('Token saved: ' + jsonData.data.token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"],
+              "query": []
+            },
+            "description": "Login and get authentication token"
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints"
+    },
+    {
+      "name": "Job Requests",
+      "item": [
+        {
+          "name": "Create Job Request (Basic with Jobs)",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unit_type\": \"apartment\",\n  \"job_type\": \"full\",\n  \"service_type\": \"service_provider\",\n  \"description_type\": \"basic\",\n  \"city_id\": 1,\n  \"country_code\": \"EG\",\n  \"address\": \"123 Main Street, Cairo, Egypt\",\n  \"basic_description\": {\n    \"rooms_count\": 3,\n    \"wet_rooms_count\": 2,\n    \"external_rooms_count\": 1,\n    \"has_garden\": false,\n    \"has_roof\": true,\n    \"area\": 120.5,\n    \"description\": \"Modern apartment needs full renovation.\"\n  },\n  \"jobs\": [\n    {\n      \"category_id\": 1,\n      \"fee_amount\": 5000,\n      \"size\": \"medium\",\n      \"description\": \"Full renovation needed\",\n      \"urgency\": \"standard\"\n    },\n    {\n      \"category_id\": 2,\n      \"fee_amount\": 3000,\n      \"size\": \"small\",\n      \"description\": \"Electrical work\",\n      \"urgency\": \"urgent\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/job-requests",
+              "host": ["{{base_url}}"],
+              "path": ["job-requests"],
+              "query": []
+            },
+            "description": "Create a new job request with basic description and multiple jobs (no room association)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Job Request (Detailed with Rooms and Jobs)",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unit_type\": \"villa\",\n  \"job_type\": \"partial\",\n  \"service_type\": \"specialist\",\n  \"description_type\": \"detailed\",\n  \"city_id\": 1,\n  \"country_code\": \"EG\",\n  \"address\": \"456 Palm Avenue, New Cairo, Egypt\",\n  \"rooms\": [\n    {\n      \"room_type_id\": 1,\n      \"area\": 25.5,\n      \"jobs\": [\n        {\n          \"category_id\": 1,\n          \"fee_amount\": 2000,\n          \"size\": \"medium\",\n          \"description\": \"Kitchen renovation\",\n          \"urgency\": \"standard\"\n        }\n      ]\n    },\n    {\n      \"room_type_id\": 2,\n      \"area\": 15.0,\n      \"jobs\": [\n        {\n          \"category_id\": 3,\n          \"fee_amount\": 1500,\n          \"size\": \"small\",\n          \"description\": \"Bathroom plumbing\",\n          \"urgency\": \"urgent\"\n        }\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/job-requests",
+              "host": ["{{base_url}}"],
+              "path": ["job-requests"],
+              "query": []
+            },
+            "description": "Create a new job request with detailed description - each room has its own jobs"
+          },
+          "response": []
+        },
+        {
+          "name": "List All Job Requests",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/job-requests",
+              "host": ["{{base_url}}"],
+              "path": ["job-requests"],
+              "query": []
+            },
+            "description": "Get paginated list of all job requests"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job Request by ID",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/job-requests/1",
+              "host": ["{{base_url}}"],
+              "path": ["job-requests", "1"],
+              "query": []
+            },
+            "description": "Get detailed information about a specific job request"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Job Request",
+          "event": [],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unit_type\": \"house\",\n  \"job_type\": \"partial\",\n  \"address\": \"789 Updated Address, Maadi, Cairo\",\n  \"city_id\": 2\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/job-requests/1",
+              "host": ["{{base_url}}"],
+              "path": ["job-requests", "1"],
+              "query": []
+            },
+            "description": "Update an existing job request (partial update)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Job Request",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/job-requests/1",
+              "host": ["{{base_url}}"],
+              "path": ["job-requests", "1"],
+              "query": []
+            },
+            "description": "Delete a job request"
+          },
+          "response": []
+        }
+      ],
+      "description": "Job Request CRUD operations"
+    },
+    {
+      "name": "Countries",
+      "item": [
+        {
+          "name": "List All Countries",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/countries",
+              "host": ["{{base_url}}"],
+              "path": ["countries"],
+              "query": []
+            },
+            "description": "Get list of all countries"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Country with Translations",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"EG\",\n  \"name\": \"Egypt\",\n  \"translations\": [\n    {\n      \"language_code\": \"ar\",\n      \"name\": \"مصر\"\n    },\n    {\n      \"language_code\": \"fr\",\n      \"name\": \"Égypte\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/countries",
+              "host": ["{{base_url}}"],
+              "path": ["countries"],
+              "query": []
+            },
+            "description": "Create a new country with translations"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Country by Code",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/countries/EG",
+              "host": ["{{base_url}}"],
+              "path": ["countries", "EG"],
+              "query": []
+            },
+            "description": "Get country by code"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Country with Language",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/countries/EG/lang/ar",
+              "host": ["{{base_url}}"],
+              "path": ["countries", "EG", "lang", "ar"],
+              "query": []
+            },
+            "description": "Get country with specific language translation"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Country Name in Language",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/countries/EG/name/ar",
+              "host": ["{{base_url}}"],
+              "path": ["countries", "EG", "name", "ar"],
+              "query": []
+            },
+            "description": "Get country name in specific language"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Country with Translations",
+          "event": [],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Arab Republic of Egypt\",\n  \"translations\": [\n    {\n      \"language_code\": \"ar\",\n      \"name\": \"جمهورية مصر العربية\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/countries/EG",
+              "host": ["{{base_url}}"],
+              "path": ["countries", "EG"],
+              "query": []
+            },
+            "description": "Update country with translations"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Country",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/countries/EG",
+              "host": ["{{base_url}}"],
+              "path": ["countries", "EG"],
+              "query": []
+            },
+            "description": "Delete a country"
+          },
+          "response": []
+        }
+      ],
+      "description": "Country CRUD operations with multi-language support"
+    },
+    {
+      "name": "Cities",
+      "item": [
+        {
+          "name": "List All Cities",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/cities",
+              "host": ["{{base_url}}"],
+              "path": ["cities"],
+              "query": []
+            },
+            "description": "Get list of all cities"
+          },
+          "response": []
+        },
+        {
+          "name": "Create City with Translations",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cairo\",\n  \"country_code\": \"EG\",\n  \"translations\": [\n    {\n      \"language_code\": \"ar\",\n      \"name\": \"القاهرة\"\n    },\n    {\n      \"language_code\": \"fr\",\n      \"name\": \"Le Caire\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/cities",
+              "host": ["{{base_url}}"],
+              "path": ["cities"],
+              "query": []
+            },
+            "description": "Create a new city with translations"
+          },
+          "response": []
+        },
+        {
+          "name": "Get City by ID",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/cities/1",
+              "host": ["{{base_url}}"],
+              "path": ["cities", "1"],
+              "query": []
+            },
+            "description": "Get city by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Get City with Language",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/cities/1/lang/ar",
+              "host": ["{{base_url}}"],
+              "path": ["cities", "1", "lang", "ar"],
+              "query": []
+            },
+            "description": "Get city with specific language translation"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Cities by Country with Language",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/cities/country/EG/lang/ar",
+              "host": ["{{base_url}}"],
+              "path": ["cities", "country", "EG", "lang", "ar"],
+              "query": []
+            },
+            "description": "Get all cities in a country with specific language"
+          },
+          "response": []
+        },
+        {
+          "name": "Update City with Translations",
+          "event": [],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Cairo\",\n  \"translations\": [\n    {\n      \"language_code\": \"ar\",\n      \"name\": \"القاهرة الجديدة\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/cities/1",
+              "host": ["{{base_url}}"],
+              "path": ["cities", "1"],
+              "query": []
+            },
+            "description": "Update city with translations"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete City",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/cities/1",
+              "host": ["{{base_url}}"],
+              "path": ["cities", "1"],
+              "query": []
+            },
+            "description": "Delete a city"
+          },
+          "response": []
+        },
+        {
+          "name": "Get City Name in Language",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/cities/1/name/ar",
+              "host": ["{{base_url}}"],
+              "path": ["cities", "1", "name", "ar"],
+              "query": []
+            },
+            "description": "Get city name in specific language"
+          },
+          "response": []
+        }
+      ],
+      "description": "City CRUD operations with multi-language support"
+    }
+  ],
+  "auth": {
+    "type": "noauth"
+  }
+}
