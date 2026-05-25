@@ -349,6 +349,8 @@ Set repository variable **`NEXT_PUBLIC_API_URL`** in GitHub for correct producti
 | Frontend cannot reach API | Use `http://localhost:8000/api`, not `http://backend/...`. |
 | Changes not reflected (Windows) | Dev compose sets `WATCHPACK_POLLING=true`; restart frontend container. |
 | `vendor` missing | Dev backend runs `composer install` on start; or run it manually via `exec backend composer install`. |
+| Backend image build fails on `gd` / `composer` | Rebuild after pulling latest `docker/backend/Dockerfile` (PHP 8.3 GD flags + Composer runs on PHP image with extensions). |
+
 
 ---
 
