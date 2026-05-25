@@ -1,0 +1,227 @@
+# =============================================================================
+# Construction Marketplace — base Docker Compose
+#
+# Usage:
+#   Development: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#   Staging:     docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
+#   Production:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# =============================================================================
+
+name: construction-marketplace
+
+services:
+  # ---------------------------------------------------------------------------
+  # MySQL — primary database
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.4
+    container_name: construction_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-secret}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-construction}
+      MYSQL_USER: ${MYSQL_USER:-construction}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-secret}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-secret}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Redis — cache, sessions, queues
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: construction_redis
+    restart: unless-stopped
+    command: >
+      sh -c "if [ -n \"$$REDIS_PASSWORD\" ]; then
+        redis-server --requirepass $$REDIS_PASSWORD;
+      else
+        redis-server;
+      fi"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Laravel API — PHP 8.3-FPM
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: production
+    image: construction-backend:${IMAGE_TAG:-latest}
+    container_name: construction_backend
+    restart: unless-stopped
+    env_file:
+      - ./construction-marketplace-api/.env
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - backend_storage:/var/www/html/storage/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm -t 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Nginx — reverse proxy (API :8000, unified :80)
+  # ---------------------------------------------------------------------------
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    image: construction-nginx:${IMAGE_TAG:-latest}
+    container_name: construction_nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_API_PORT:-8000}:8000"
+    volumes:
+      - backend_storage:/var/www/html/storage/app:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/up || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ---------------------------------------------------------------------------
+  # Next.js frontend
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+    image: construction-frontend:${IMAGE_TAG:-latest}
+    container_name: construction_frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # Queue worker — Supervisor manages Laravel queue:work processes
+  # ---------------------------------------------------------------------------
+  queue-worker:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: worker
+    image: construction-queue-worker:${IMAGE_TAG:-latest}
+    container_name: construction_queue_worker
+    restart: unless-stopped
+    env_file:
+      - ./construction-marketplace-api/.env
+    environment:
+      DB_HOST: mysql
+      REDIS_HOST: redis
+    volumes:
+      - backend_storage:/var/www/html/storage/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "supervisorctl -c /etc/supervisor/supervisord.conf status | grep -q RUNNING || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Scheduler — runs `php artisan schedule:run` every minute
+  # ---------------------------------------------------------------------------
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: production
+    image: construction-backend:${IMAGE_TAG:-latest}
+    container_name: construction_scheduler
+    restart: unless-stopped
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
+    command: ["/bin/sh", "/usr/local/bin/run-scheduler.sh"]
+    env_file:
+      - ./construction-marketplace-api/.env
+    environment:
+      DB_HOST: mysql
+      REDIS_HOST: redis
+    volumes:
+      - ./docker/scheduler/run-scheduler.sh:/usr/local/bin/run-scheduler.sh:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - app_network
+
+# =============================================================================
+# Networks — internal bridge for service discovery
+# =============================================================================
+networks:
+  app_network:
+    driver: bridge
+    name: construction_app_network
+
+# =============================================================================
+# Volumes — persistent data
+# =============================================================================
+volumes:
+  mysql_data:
+    name: construction_mysql_data
+  redis_data:
+    name: construction_redis_data
+  backend_storage:
+    name: construction_backend_storage

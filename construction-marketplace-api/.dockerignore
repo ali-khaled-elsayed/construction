@@ -1,0 +1,18 @@
+# =============================================================================
+# API build context (if building from this directory directly)
+# =============================================================================
+
+.git
+.env
+.env.*
+!.env.docker.example
+vendor
+node_modules
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+tests
+.phpunit.result.cache
+Dockerfile
+docker-compose*.yml

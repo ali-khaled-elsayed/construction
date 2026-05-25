@@ -1,0 +1,26 @@
+# =============================================================================
+# Root build context — exclude large/secret paths from backend/frontend/nginx builds
+# =============================================================================
+
+.git
+.gitignore
+.cursor
+*.md
+.env
+.env.*
+!.env.docker.example
+
+# Don't send host vendor/node_modules into images (built inside Dockerfile)
+construction-marketplace-api/vendor
+construction-marketplace-api/node_modules
+construction-marketplace-api/storage/logs/*
+construction-marketplace-api/storage/framework/cache/*
+construction-marketplace-api/storage/framework/sessions/*
+construction-marketplace-api/storage/framework/views/*
+construction-marketplace-api/.phpunit.result.cache
+
+construction-marketplace-web/node_modules
+construction-marketplace-web/.next
+
+docker/nginx/certs
+docker/volumes

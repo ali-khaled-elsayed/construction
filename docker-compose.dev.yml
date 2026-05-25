@@ -1,0 +1,86 @@
+# =============================================================================
+# Development overlay — hot reload, bind mounts, exposed debug ports
+# =============================================================================
+
+services:
+  mysql:
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+
+  redis:
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.dev
+    image: construction-backend:dev
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
+      DB_CONNECTION: mysql
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+    volumes:
+      - ./construction-marketplace-api:/var/www/html
+      - backend_vendor:/var/www/html/vendor
+    command: >
+      sh -c "composer install --no-interaction &&
+             php-fpm -F"
+
+  nginx:
+    volumes:
+      - ./construction-marketplace-api/public:/var/www/html/public:ro
+      - ./construction-marketplace-api/storage/app:/var/www/html/storage/app:ro
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile.dev
+    image: construction-frontend:dev
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./construction-marketplace-web:/app
+      - frontend_node_modules:/app/node_modules
+      - frontend_next:/app/.next
+
+  queue-worker:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.dev
+    image: construction-backend:dev
+    user: root
+    command: >
+      sh -c "apk add --no-cache supervisor &&
+             mkdir -p /etc/supervisor/conf.d &&
+             cp /tmp/supervisor/supervisord.conf /etc/supervisor/supervisord.conf &&
+             cp /tmp/supervisor/laravel-worker.conf /etc/supervisor/conf.d/laravel-worker.conf &&
+             composer install --no-interaction &&
+             /usr/bin/supervisord -c /etc/supervisor/supervisord.conf"
+    volumes:
+      - ./construction-marketplace-api:/var/www/html
+      - backend_vendor:/var/www/html/vendor
+      - ./docker/supervisor/supervisord.conf:/tmp/supervisor/supervisord.conf:ro
+      - ./docker/supervisor/laravel-worker.conf:/tmp/supervisor/laravel-worker.conf:ro
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.dev
+    image: construction-backend:dev
+    volumes:
+      - ./construction-marketplace-api:/var/www/html
+      - backend_vendor:/var/www/html/vendor
+      - ./docker/scheduler/run-scheduler.sh:/usr/local/bin/run-scheduler.sh:ro
+
+volumes:
+  backend_vendor:
+  frontend_node_modules:
+  frontend_next:

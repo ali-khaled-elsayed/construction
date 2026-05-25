@@ -1,0 +1,15 @@
+# =============================================================================
+# Frontend build context (if building from this directory directly)
+# =============================================================================
+
+.git
+.env
+.env.*
+!.env.docker.example
+node_modules
+.next
+out
+coverage
+*.md
+Dockerfile
+docker-compose*.yml

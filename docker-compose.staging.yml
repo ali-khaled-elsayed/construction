@@ -1,0 +1,37 @@
+# =============================================================================
+# Staging overlay — production-like images, migrations on deploy
+# =============================================================================
+
+services:
+  backend:
+    environment:
+      APP_ENV: staging
+      APP_DEBUG: "false"
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+    volumes:
+      - backend_storage:/var/www/html/storage/app
+
+  nginx:
+    volumes:
+      - nginx_certs:/etc/nginx/certs:ro
+
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://staging.example.com/api}
+
+  queue-worker:
+    environment:
+      APP_ENV: staging
+      APP_DEBUG: "false"
+
+  scheduler:
+    environment:
+      APP_ENV: staging
+
+  redis:
+    command: >
+      sh -c "redis-server --requirepass $${REDIS_PASSWORD}"
+
+volumes:
+  nginx_certs:
